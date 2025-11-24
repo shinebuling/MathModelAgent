@@ -65,8 +65,25 @@ class LLM:
         if self.max_tokens:
             kwargs["max_tokens"] = self.max_tokens
 
+        # 智能推断 provider
         if self.base_url:
-            kwargs["base_url"] = self.base_url
+            base_url_lower = self.base_url.lower()
+            model_lower = self.model.lower()
+            
+            if "gitee" in base_url_lower:
+                kwargs["custom_llm_provider"] = "openai"
+                kwargs["base_url"] = self.base_url
+                logger.info(f"使用 GiteeAI 配置，provider: openai")
+            elif "deepseek" in model_lower or "deepseek" in base_url_lower:
+                kwargs["custom_llm_provider"] = "deepseek"
+                kwargs["base_url"] = self.base_url
+                logger.info(f"使用 DeepSeek 配置，provider: deepseek")
+            elif "openai" in base_url_lower or "api.openai.com" in base_url_lower:
+                kwargs["custom_llm_provider"] = "openai"
+                kwargs["base_url"] = self.base_url
+                logger.info(f"使用 OpenAI 配置，provider: openai")
+            else:
+                kwargs["base_url"] = self.base_url
         litellm.enable_json_schema_validation = True #加入json格式验证
 
         # TODO: stream 输出
@@ -244,8 +261,25 @@ async def simple_chat(model: LLM, history: list) -> str:
         "stream": False,
     }
 
+    # 智能推断 provider
     if model.base_url:
-        kwargs["base_url"] = model.base_url
+        base_url_lower = model.base_url.lower()
+        model_lower = model.model.lower()
+        
+        if "gitee" in base_url_lower:
+            kwargs["custom_llm_provider"] = "openai"
+            kwargs["base_url"] = model.base_url
+            logger.info(f"使用 GiteeAI 配置，provider: openai")
+        elif "deepseek" in model_lower or "deepseek" in base_url_lower:
+            kwargs["custom_llm_provider"] = "deepseek"
+            kwargs["base_url"] = model.base_url
+            logger.info(f"使用 DeepSeek 配置，provider: deepseek")
+        elif "openai" in base_url_lower or "api.openai.com" in base_url_lower:
+            kwargs["custom_llm_provider"] = "openai"
+            kwargs["base_url"] = model.base_url
+            logger.info(f"使用 OpenAI 配置，provider: openai")
+        else:
+            kwargs["base_url"] = model.base_url
 
     response = await acompletion(**kwargs)
 
