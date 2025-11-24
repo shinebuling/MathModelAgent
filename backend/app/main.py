@@ -7,6 +7,7 @@ from app.utils.log_util import logger
 from app.config.setting import settings
 from fastapi.staticfiles import StaticFiles
 from app.utils.cli import get_ascii_banner, center_cli_str
+from app.services.redis_manager import redis_manager
 
 
 @asynccontextmanager
@@ -18,8 +19,33 @@ async def lifespan(app: FastAPI):
     PROJECT_FOLDER = "./project"
     os.makedirs(PROJECT_FOLDER, exist_ok=True)
 
+    # 测试Redis连接
+    try:
+        logger.info("Testing Redis connection...")
+        redis_client = await redis_manager.get_client()
+        await redis_client.ping()
+        logger.info("✅ Redis connection successful!")
+        
+        # 测试发布/订阅功能
+        await redis_client.set("startup_test", "connected")
+        test_value = await redis_client.get("startup_test")
+        if test_value == "connected":
+            logger.info("✅ Redis read/write test successful!")
+        else:
+            logger.warning("⚠️ Redis read/write test failed!")
+            
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {str(e)}")
+        logger.error("Please check if Redis server is running and accessible")
+
     yield
     logger.info("Stopping MathModelAgent")
+    # 关闭Redis连接
+    try:
+        await redis_manager.close()
+        logger.info("Redis connection closed")
+    except Exception as e:
+        logger.error(f"Error closing Redis connection: {str(e)}")
 
 
 app = FastAPI(

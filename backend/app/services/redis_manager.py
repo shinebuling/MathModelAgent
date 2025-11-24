@@ -1,6 +1,9 @@
 import redis.asyncio as aioredis
 from typing import Optional
 import json
+import subprocess
+import time
+import os
 from pathlib import Path
 from app.config.setting import settings
 from app.schemas.response import Message
@@ -14,6 +17,64 @@ class RedisManager:
         # 创建消息存储目录
         self.messages_dir = Path("logs/messages")
         self.messages_dir.mkdir(parents=True, exist_ok=True)
+        # Redis便携版路径
+        self.redis_portable_dir = Path("redis-portable")
+        self.redis_server_exe = self.redis_portable_dir / "redis-server.exe"
+        self.redis_config = self.redis_portable_dir / "redis.windows.conf"
+
+    def _is_redis_running(self) -> bool:
+        """检查Redis是否在运行"""
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq redis-server.exe"],
+                capture_output=True,
+                text=True,
+                shell=True
+            )
+            return "redis-server.exe" in result.stdout
+        except Exception:
+            return False
+
+    def _start_portable_redis(self) -> bool:
+        """启动便携式Redis服务器"""
+        try:
+            if not self.redis_server_exe.exists():
+                logger.error(f"Redis服务器不存在: {self.redis_server_exe}")
+                return False
+                
+            if not self.redis_config.exists():
+                logger.error(f"Redis配置文件不存在: {self.redis_config}")
+                return False
+            
+            logger.info("启动便携式Redis服务器...")
+            
+            # 使用绝对路径启动Redis
+            cmd = [str(self.redis_server_exe.absolute()), str(self.redis_config.absolute())]
+            
+            # 在Windows上使用CREATE_NEW_PROCESS_GROUP来避免继承控制台
+            creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+            
+            subprocess.Popen(
+                cmd,
+                cwd=str(self.redis_portable_dir.absolute()),
+                creationflags=creation_flags,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            
+            # 等待Redis启动
+            for i in range(10):  # 最多等待10秒
+                time.sleep(1)
+                if self._is_redis_running():
+                    logger.info("便携式Redis启动成功")
+                    return True
+            
+            logger.error("便携式Redis启动超时")
+            return False
+            
+        except Exception as e:
+            logger.error(f"启动便携式Redis失败: {str(e)}")
+            return False
 
     async def get_client(self) -> aioredis.Redis:
         if self._client is None:
@@ -22,13 +83,37 @@ class RedisManager:
                 decode_responses=True,
                 max_connections=settings.REDIS_MAX_CONNECTIONS,
             )
+        
         try:
             await self._client.ping()
             logger.info(f"Redis 连接建立成功: {self.redis_url}")
             return self._client
         except Exception as e:
-            logger.error(f"无法连接到Redis: {str(e)}")
-            raise
+            logger.warning(f"Redis连接失败: {str(e)}")
+            
+            # 如果是localhost连接失败，尝试启动便携式Redis
+            if "localhost" in self.redis_url.lower():
+                logger.info("检测到使用本地Redis，尝试启动便携式Redis服务...")
+                
+                if not self._is_redis_running():
+                    if self._start_portable_redis():
+                        # 重新尝试连接
+                        try:
+                            await self._client.ping()
+                            logger.info(f"Redis 连接建立成功: {self.redis_url}")
+                            return self._client
+                        except Exception as retry_e:
+                            logger.error(f"启动便携式Redis后仍无法连接: {str(retry_e)}")
+                            raise retry_e
+                    else:
+                        logger.error("无法启动便携式Redis服务")
+                        raise e
+                else:
+                    logger.info("Redis服务已运行，但连接失败，请检查配置")
+                    raise e
+            else:
+                logger.error(f"非本地Redis连接失败: {str(e)}")
+                raise e
 
     async def set(self, key: str, value: str):
         """设置Redis键值对"""

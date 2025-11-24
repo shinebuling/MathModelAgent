@@ -258,6 +258,12 @@ const providers = {
     "baseUrl": "https://api.302.ai",
     "modelId": "openai/deepseek-chat"
   },
+  "GiteeAI": {
+    "url": "https://ai.gitee.com/",
+    "key": "GiteeAI",
+    "baseUrl": "https://ai.gitee.com/v1",
+    "modelId": "DeepSeek-V3/DeepSeek-R1"
+  },
   "OpenAI 兼容": {
     "url": "/",
     "key": "OpenAI 兼容",

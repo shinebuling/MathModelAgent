@@ -35,6 +35,33 @@ class WriterAgent(Agent):  # 同样继承自Agent类
         self.system_prompt = get_writer_prompt(format_output)
         self.available_images: list[str] = []
 
+    def _truncate_chat_history(self, history: list, max_tokens: int = 25000) -> list:
+        """截断对话历史以避免上下文长度超限"""
+        # 估算token数量（粗略计算：1个token约等于4个字符）
+        def estimate_tokens(text: str) -> int:
+            return len(str(text)) // 4
+        
+        if not history:
+            return history
+            
+        # 保留系统消息
+        system_messages = [msg for msg in history if msg.get("role") == "system"]
+        other_messages = [msg for msg in history if msg.get("role") != "system"]
+        
+        # 从最新消息开始，逐步添加到截断后的历史中
+        truncated_messages = []
+        current_tokens = sum(estimate_tokens(json.dumps(msg)) for msg in system_messages)
+        
+        # 倒序遍历，优先保留最新的消息
+        for msg in reversed(other_messages):
+            msg_tokens = estimate_tokens(json.dumps(msg))
+            if current_tokens + msg_tokens > max_tokens:
+                break
+            truncated_messages.insert(0, msg)
+            current_tokens += msg_tokens
+            
+        return system_messages + truncated_messages
+
     async def run(
         self,
         prompt: str,
@@ -69,9 +96,10 @@ class WriterAgent(Agent):  # 同样继承自Agent类
 
         await self.append_chat_history({"role": "user", "content": prompt})
 
-        # 获取历史消息用于本次对话
+        # 获取历史消息用于本次对话，实施上下文截断
+        truncated_history = self._truncate_chat_history(self.chat_history, max_tokens=25000)
         response = await self.model.chat(
-            history=self.chat_history,
+            history=truncated_history,
             tools=writer_tools,
             tool_choice="auto",
             agent_name=self.__class__.__name__,
