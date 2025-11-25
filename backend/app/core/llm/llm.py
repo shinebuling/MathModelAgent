@@ -1,6 +1,7 @@
 from app.utils.common_utils import transform_link, split_footnotes
 from app.utils.log_util import logger
 import time
+import asyncio
 from app.schemas.response import (
     CoderMessage,
     WriterMessage,
@@ -89,18 +90,32 @@ class LLM:
         # TODO: stream 输出
         for attempt in range(max_retries):
             try:
+                logger.info(f"开始第{attempt + 1}次API调用")
                 # completion = self.client.chat.completions.create(**kwargs)
-                response = await acompletion(**kwargs)
+                # 添加180秒（3分钟）超时控制
+                response = await asyncio.wait_for(
+                    acompletion(**kwargs),
+                    timeout=180.0
+                )
                 logger.info(f"API返回: {response}")
                 if not response or not hasattr(response, "choices"):
                     raise ValueError("无效的API响应")
                 self.chat_count += 1
                 await self.send_message(response, agent_name, sub_title)
                 return response
+            except asyncio.TimeoutError:
+                logger.error(f"第{attempt + 1}次API调用超时(180秒)")
+                if attempt < max_retries - 1:
+                    logger.info(f"将在{retry_delay * (attempt + 1)}秒后重试")
+                    await asyncio.sleep(retry_delay * (attempt + 1))
+                    continue
+                else:
+                    raise Exception("API调用超时，请检查网络连接或模型响应速度")
             except Exception as e:
                 logger.error(f"第{attempt + 1}次重试: {str(e)}")
                 if attempt < max_retries - 1:  # 如果不是最后一次尝试
-                    time.sleep(retry_delay * (attempt + 1))  # 指数退避
+                    logger.info(f"将在{retry_delay * (attempt + 1)}秒后重试")
+                    await asyncio.sleep(retry_delay * (attempt + 1))  # 异步等待
                     continue
                 logger.debug(f"请求参数: {kwargs}")
                 raise  # 如果所有重试都失败，则抛出异常
