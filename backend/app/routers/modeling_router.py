@@ -159,9 +159,23 @@ async def validate_openalex_email(request: ValidateOpenalexEmailRequest):
     """
     验证 OpenAlex Email 的有效性
     """
+    import re
+    email = request.email.strip() if request.email else ""
+    # 非空校验
+    if not email:
+        return ValidateOpenalexEmailResponse(
+            valid=False, message="✗ OpenAlex Email 不能为空"
+        )
+    # 简单邮箱格式校验
+    email_regex = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+    if not re.match(email_regex, email):
+        return ValidateOpenalexEmailResponse(
+            valid=False, message="✗ OpenAlex Email 格式不正确"
+        )
     try:
+        import requests
         response = requests.get(
-            f"https://api.openalex.org/works?mailto={request.email}"
+            f"https://api.openalex.org/works?mailto={email}", timeout=5
         )
         logger.debug(f"OpenAlex Email 验证响应: {response}")
         response.raise_for_status()
