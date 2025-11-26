@@ -79,6 +79,10 @@ class LLM:
                 kwargs["custom_llm_provider"] = "deepseek"
                 kwargs["base_url"] = self.base_url
                 logger.info(f"使用 DeepSeek 配置，provider: deepseek")
+            elif "siliconflow" in base_url_lower:
+                kwargs["custom_llm_provider"] = "openai"
+                kwargs["base_url"] = self.base_url
+                logger.info(f"使用 硅基流动 配置，provider: openai")
             elif "openai" in base_url_lower or "api.openai.com" in base_url_lower:
                 kwargs["custom_llm_provider"] = "openai"
                 kwargs["base_url"] = self.base_url
@@ -92,10 +96,10 @@ class LLM:
             try:
                 logger.info(f"开始第{attempt + 1}次API调用")
                 # completion = self.client.chat.completions.create(**kwargs)
-                # 添加180秒（3分钟）超时控制
+                # 添加600秒超时控制
                 response = await asyncio.wait_for(
                     acompletion(**kwargs),
-                    timeout=180.0
+                    timeout=600.0
                 )
                 logger.info(f"API返回: {response}")
                 if not response or not hasattr(response, "choices"):
@@ -104,7 +108,7 @@ class LLM:
                 await self.send_message(response, agent_name, sub_title)
                 return response
             except asyncio.TimeoutError:
-                logger.error(f"第{attempt + 1}次API调用超时(180秒)")
+                logger.error(f"第{attempt + 1}次API调用超时(600秒)")
                 if attempt < max_retries - 1:
                     logger.info(f"将在{retry_delay * (attempt + 1)}秒后重试")
                     await asyncio.sleep(retry_delay * (attempt + 1))
@@ -289,6 +293,10 @@ async def simple_chat(model: LLM, history: list) -> str:
             kwargs["custom_llm_provider"] = "deepseek"
             kwargs["base_url"] = model.base_url
             logger.info(f"使用 DeepSeek 配置，provider: deepseek")
+        elif "siliconflow" in base_url_lower:
+                kwargs["custom_llm_provider"] = "openai"
+                kwargs["base_url"] = model.base_url
+                logger.info(f"使用 硅基流动 配置，provider: openai")
         elif "openai" in base_url_lower or "api.openai.com" in base_url_lower:
             kwargs["custom_llm_provider"] = "openai"
             kwargs["base_url"] = model.base_url

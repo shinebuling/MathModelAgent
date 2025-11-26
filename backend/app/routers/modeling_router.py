@@ -115,6 +115,10 @@ async def validate_api_key(request: ValidateApiKeyRequest):
                 kwargs["custom_llm_provider"] = "deepseek"
                 kwargs["base_url"] = request.base_url
                 logger.info(f"API验证使用 DeepSeek 配置，provider: deepseek")
+            elif "siliconflow" in base_url_lower:
+                kwargs["custom_llm_provider"] = "openai"
+                kwargs["base_url"] = request.base_url
+                logger.info(f"API验证使用 硅基流动 配置，provider: openai")
             elif "openai" in base_url_lower or "api.openai.com" in base_url_lower:
                 kwargs["custom_llm_provider"] = "openai"
                 kwargs["base_url"] = request.base_url
