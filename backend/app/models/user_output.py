@@ -126,7 +126,14 @@ class UserOutput:
     def append_footnotes_to_text(self, text: str) -> str:
         text += "\n\n ## 参考文献"
         # 将脚注转换为列表并按 number 排序
-        sorted_footnotes = sorted(self.footnotes.items(), key=lambda x: x[1]["number"])
+        # 调试日志，打印 footnotes 内容
+        print("Footnotes content:", self.footnotes)
+
+        # 过滤掉不包含 'number' 键的条目
+        sorted_footnotes = sorted(
+            (item for item in self.footnotes.items() if "number" in item[1]),
+            key=lambda x: x[1]["number"]
+        )
         for _, footnote in sorted_footnotes:
             text += f"\n\n[^{footnote['number']}]: {footnote['content']}"
         return text
