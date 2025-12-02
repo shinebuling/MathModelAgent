@@ -21,8 +21,13 @@ import {
 import { useToast } from '@/components/ui/toast/use-toast'
 import { useRoute } from 'vue-router';
 
+// 使用 props 接收 taskId，而不是直接从路由获取
+const props = defineProps<{
+  taskId?: string
+}>()
+
 const route = useRoute()
-const taskId = route.params.task_id;
+const taskId = props.taskId || (route.params.task_id as string)
 
 
 const { toast } = useToast()
@@ -171,7 +176,6 @@ const downloadAll = async () => {
             <Button @click="openFolder()" :disabled="loadingFiles" class="flex gap-2" size="icon">
               <RefreshCw v-if="loadingFiles" class="w-4 h-4 animate-spin" />
               <Files v-else class="w-4 h-4" />
-              <Folder v-else class="w-4 h-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>

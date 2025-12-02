@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CodeExecutionResult } from '@/utils/response'
-import { renderMarkdown } from '@/utils/markdown'
+// import { renderMarkdown } from '@/utils/markdown'
 import type { NoteCell, CodeCell, ResultCell } from '@/utils/interface'
 
 defineProps<{
@@ -49,7 +49,8 @@ const formatJson = (jsonString: string) => {
 
 // 渲染Markdown内容
 const renderMarkdownContent = (content: string) => {
-  return renderMarkdown(content)
+  // 简化版本，直接返回HTML转义的内容
+  return content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
 }
 
 // 类型守卫函数，用于区分单元格类型
@@ -125,7 +126,7 @@ const isResultCell = (cell: NoteCell): cell is ResultCell => {
             
             <!-- 执行结果 - Markdown -->
             <template v-else-if="result.res_type === 'result' && result.format === 'markdown'">
-              <div class="prose prose-sm max-w-none" v-html="renderMarkdownContent(result.msg || '')"></div>
+              <div class="prose prose-sm max-w-none whitespace-pre-wrap">{{ result.msg || '' }}</div>
             </template>
             
             <!-- 执行结果 - LaTeX -->

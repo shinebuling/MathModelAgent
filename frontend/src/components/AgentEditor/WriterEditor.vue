@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue';
-import { renderMarkdown } from '@/utils/markdown';
+// import { renderMarkdown } from '@/utils/markdown';
 import type { WriterMessage } from '@/utils/response'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -21,7 +21,8 @@ let nextId = 0;
 
 // 添加新的内容段落
 const appendContent = async (content: string, sub_title?: string) => {
-  const renderedContent = await renderMarkdown(content);
+  // 简化版本，直接使用原始内容
+  const renderedContent = content.replace(/\n/g, '<br>');
   sections.value.push({
     id: nextId++,
     content,

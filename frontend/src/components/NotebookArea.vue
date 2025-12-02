@@ -6,14 +6,14 @@ import type { NoteCell, CodeCell, ResultCell } from '@/utils/interface'
 
 // 使用任务存储
 const taskStore = useTaskStore()
-console.log('interpreterMessage:', taskStore.interpreterMessage)
+// console.log('interpreterMessage:', taskStore.interpreterMessage)
 // 将代码消息转换为Notebook单元格
 const cells = computed<NoteCell[]>(() => {
   const notebookCells: NoteCell[] = []
 
   // 获取代码执行工具消息，按顺序处理
   for (const toolMsg of taskStore.interpreterMessage) {
-    console.log('Code execute message:', toolMsg)
+    // console.log('Code execute message:', toolMsg)
 
     // 处理代码输入消息
     if (toolMsg.input && toolMsg.input.code) {

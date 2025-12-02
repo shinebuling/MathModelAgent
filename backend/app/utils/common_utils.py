@@ -58,7 +58,16 @@ def load_markdown(path: str) -> str:
 
 
 def get_current_files(folder_path: str, type: str = "all") -> list[str]:
-    files = os.listdir(folder_path)
+    if not os.path.exists(folder_path):
+        logger.warning(f"文件夹不存在: {folder_path}")
+        return []
+    
+    try:
+        files = os.listdir(folder_path)
+    except OSError as e:
+        logger.error(f"读取文件夹失败: {folder_path}, 错误: {str(e)}")
+        return []
+    
     if type == "all":
         return files
     elif type == "md":

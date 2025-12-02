@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
                   下载消息
                 </Button>
 
-                <FilesSheet />
+                <FilesSheet :task-id="props.task_id" />
 
               </div>
 
