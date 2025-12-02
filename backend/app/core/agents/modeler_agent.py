@@ -24,10 +24,29 @@ class ModelerAgent(Agent):  # 继承自Agent类
         await self.append_chat_history(
             {"role": "system", "content": self.system_prompt}
         )
+        
+        # 构建更明确的输入信息，包含问题数量提示
+        questions_data = coordinator_to_modeler.questions
+        ques_count = questions_data.get("ques_count", 0)
+        
+        # 提取所有问题键
+        question_keys = [key for key in questions_data.keys() if key.startswith("ques") and key != "ques_count"]
+        
+        user_message = f"""
+输入数据：{json.dumps(questions_data, ensure_ascii=False)}
+
+重要提示：
+- 检测到 {ques_count} 个问题
+- 问题键列表：{question_keys}
+- 你必须为每个问题键（{', '.join(question_keys)}）都提供对应的解决方案
+- 同时必须包含 "eda" 和 "sensitivity_analysis" 键
+- 确保输出的JSON包含所有必需的键：["eda"] + {question_keys} + ["sensitivity_analysis"]
+"""
+        
         await self.append_chat_history(
             {
                 "role": "user",
-                "content": json.dumps(coordinator_to_modeler.questions),
+                "content": user_message,
             }
         )
 

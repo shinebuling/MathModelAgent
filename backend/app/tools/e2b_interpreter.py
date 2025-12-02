@@ -83,9 +83,29 @@ class E2BCodeInterpreter(BaseCodeInterpreter):
     async def _pre_execute_code(self):
         init_code = (
             "import matplotlib.pyplot as plt\n"
-            # "plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial Unicode MS']\n"
-            # "plt.rcParams['axes.unicode_minus'] = False\n"
-            # "plt.rcParams['font.family'] = 'sans-serif'\n"
+            "import matplotlib as mpl\n"
+            "import platform\n"
+            "\n"
+            "# 配置中文字体支持\n"
+            "def setup_chinese_font():\n"
+            "    system = platform.system()\n"
+            "    if system == 'Windows':\n"
+            "        fonts = ['SimHei', 'Microsoft YaHei', 'KaiTi', 'FangSong']\n"
+            "    elif system == 'Darwin':\n"
+            "        fonts = ['Heiti SC', 'Arial Unicode MS', 'STHeiti']\n"
+            "    else:\n"
+            "        fonts = ['DejaVu Sans', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC']\n"
+            "    \n"
+            "    for font in fonts:\n"
+            "        try:\n"
+            "            plt.rcParams['font.sans-serif'] = [font, 'DejaVu Sans']\n"
+            "            plt.rcParams['axes.unicode_minus'] = False\n"
+            "            plt.rcParams['font.family'] = 'sans-serif'\n"
+            "            break\n"
+            "        except:\n"
+            "            continue\n"
+            "\n"
+            "setup_chinese_font()\n"
         )
         await self.execute_code(init_code)
 

@@ -31,6 +31,27 @@ class Flows:
             for key, value in questions.items()
             if key.startswith("ques") and key != "ques_count"
         }
+        
+        # 检查建模手返回的解决方案中是否包含所有问题的答案
+        from app.utils.log_util import logger
+        missing_keys = []
+        for key in questions_quesx.keys():
+            if key not in modeler_response.questions_solution:
+                missing_keys.append(key)
+        
+        if missing_keys:
+            logger.warning(f"建模手返回的解决方案缺少以下问题的答案: {missing_keys}")
+            logger.warning(f"用户问题键: {list(questions_quesx.keys())}")
+            logger.warning(f"建模手返回的键: {list(modeler_response.questions_solution.keys())}")
+            logger.warning(f"将为缺失的问题提供默认解决方案")
+            
+            # 为缺失的问题提供默认解决方案
+            for missing_key in missing_keys:
+                problem_text = questions_quesx.get(missing_key, f"问题{missing_key[-1]}")
+                default_solution = f"针对问题'{problem_text}'，建议采用数学建模方法进行求解，包括数据预处理、模型构建、参数优化和结果验证等步骤。可视化方案：绘制相关图表展示分析结果。"
+                modeler_response.questions_solution[missing_key] = default_solution
+                logger.info(f"已为{missing_key}提供默认解决方案")
+        
         ques_flow = {
             key: {
                 "coder_prompt": f"""
@@ -39,7 +60,24 @@ class Flows:
                     """,
             }
             for key, value in questions_quesx.items()
+            if key in modeler_response.questions_solution  # 额外保护
         }
+        # 检查必需的键是否存在
+        required_keys = ["eda", "sensitivity_analysis"]
+        for req_key in required_keys:
+            if req_key not in modeler_response.questions_solution:
+                logger.warning(f"建模手返回的解决方案缺少必需的键: {req_key}，将提供默认方案")
+                
+                # 提供默认方案
+                if req_key == "eda":
+                    default_eda = "进行探索性数据分析：1)数据概览和基本统计；2)缺失值和异常值检测；3)变量分布可视化；4)相关性分析；5)数据清洗和预处理。可视化方案：绘制直方图、箱线图、散点图、相关性热力图等。"
+                    modeler_response.questions_solution[req_key] = default_eda
+                elif req_key == "sensitivity_analysis":
+                    default_sensitivity = "对模型关键参数进行敏感性分析：1)识别关键输入参数；2)设定参数变化范围(±10%,±20%)；3)分析参数变化对结果的影响；4)评估模型稳定性。可视化方案：绘制龙卷风图、蜘蛛图展示参数敏感性。"
+                    modeler_response.questions_solution[req_key] = default_sensitivity
+                
+                logger.info(f"已为{req_key}提供默认解决方案")
+        
         flows = {
             "eda": {
                 # TODO ： 获取当前路径下的所有数据集
