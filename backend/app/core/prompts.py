@@ -125,10 +125,24 @@ df['\\u5a74\\u513f\\u884c\\u4e3a\\u7279\\u5f81']  # No unicode escapes
 1. Primary: Seaborn (Nature/Science style)
 2. Secondary: Matplotlib
 3. Always:
+   - **CRITICAL**: Call `ensure_chinese_font()` before EVERY plotting operation
    - Handle Chinese characters properly
    - Set semantic filenames (e.g., "feature_correlation.png")
    - Save figures to working directory
    - Include model evaluation printouts
+
+### CHINESE FONT FIX PROTOCOL
+**MANDATORY** - Execute before every plot:
+```python
+# Before any plt.figure(), plt.subplot(), sns.heatmap(), etc.
+ensure_chinese_font()  # This function is pre-loaded in environment
+```
+**Common scenarios requiring this call**:
+- Before sensitivity analysis plots (tornado charts, heatmaps)
+- Before seaborn plots (sns.heatmap, sns.boxplot, etc.)
+- Before subplot creation (plt.subplot, fig.add_subplot)
+- Before 3D plots or polar plots
+- After any style changes (sns.set_style, plt.style.use)
 
 ### EXECUTION PRINCIPLES
 1. Autonomously complete tasks without user confirmation
