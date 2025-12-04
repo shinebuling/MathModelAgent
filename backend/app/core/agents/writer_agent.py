@@ -9,7 +9,7 @@ from app.schemas.response import SystemMessage, WriterMessage
 import json
 from app.core.functions import writer_tools
 from icecream import ic
-from app.schemas.A2A import WriterResponse
+from app.schemas.A2A import WriterResponse, Footnote
 
 
 # 长文本
@@ -98,10 +98,22 @@ class WriterAgent(Agent):  # 同样继承自Agent类
 
         # 获取历史消息用于本次对话，实施上下文截断
         truncated_history = self._truncate_chat_history(self.chat_history, max_tokens=25000)
+        
+        # 判断是否需要强制文献检索（理论部分）
+        need_literature = any(keyword in str(prompt).lower() for keyword in 
+                            ['理论', '模型介绍', '模型建立', '模型原理', '算法原理', '方法介绍', 
+                             'theory', 'model', 'algorithm', 'method'])
+        
+        # 如果是理论部分且之前没有调用过search_papers，强制调用
+        tool_choice_mode = "auto"
+        if need_literature and not any('search_papers' in str(msg) for msg in self.chat_history):
+            tool_choice_mode = {"type": "function", "function": {"name": "search_papers"}}
+            logger.info("检测到理论部分，强制启用文献检索工具")
+        
         response = await self.model.chat(
             history=truncated_history,
             tools=writer_tools,
-            tool_choice="auto",
+            tool_choice=tool_choice_mode,
             agent_name=self.__class__.__name__,
             sub_title=sub_title,
         )
@@ -162,8 +174,27 @@ class WriterAgent(Agent):  # 同样继承自Agent类
                     sub_title=sub_title,
                 )
                 response_content = next_response.choices[0].message.content
+                
+                # 记录成功检索的文献，使用Footnote模型
+                footnote = Footnote(
+                    query=query,
+                    content=papers_str,
+                    papers_count=len(papers),
+                    metadata={"papers": [p.get("id", "") for p in papers] if papers else []}
+                )
+                footnotes.append(footnote)
+                logger.info(f"成功检索文献，查询词: {query}，结果数: {len(papers)}")
         else:
             response_content = response.choices[0].message.content
+            
+        # 验证：如果回复包含引用但没有调用工具，发出警告
+        if "[^" in response_content and not footnotes:
+            logger.warning("检测到文献引用标记但未调用search_papers工具，可能是AI生成的虚假引用")
+            await redis_manager.publish_message(
+                self.task_id,
+                SystemMessage(content="警告：检测到未经验证的文献引用", type="warning"),
+            )
+            
         self.chat_history.append({"role": "assistant", "content": response_content})
         logger.info(f"{self.__class__.__name__}:完成:执行对话")
         return WriterResponse(response_content=response_content, footnotes=footnotes)

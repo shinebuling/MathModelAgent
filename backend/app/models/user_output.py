@@ -1,7 +1,7 @@
 import os
 import re
 from app.utils.data_recorder import DataRecorder
-from app.schemas.A2A import WriterResponse
+from app.schemas.A2A import WriterResponse, Footnote
 import json
 import uuid
 
@@ -46,9 +46,22 @@ class UserOutput:
         ]
 
     def set_res(self, key: str, writer_response: WriterResponse):
+        # 将Footnote对象转换为可序列化的字典格式
+        footnotes_data = None
+        if writer_response.footnotes:
+            footnotes_data = [
+                {
+                    "query": fn.query,
+                    "content": fn.content,
+                    "papers_count": fn.papers_count,
+                    "metadata": fn.metadata
+                }
+                for fn in writer_response.footnotes
+            ]
+        
         self.res[key] = {
             "response_content": writer_response.response_content,
-            "footnotes": writer_response.footnotes,
+            "footnotes": footnotes_data,
         }
 
     def get_res(self):

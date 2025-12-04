@@ -105,13 +105,14 @@ def md_2_docx(task_id: str):
         str(work_dir),
         "--mathml",  # MathML 格式公式
         "--standalone",
+        "--reference-links",  # 支持引用链接
     ]
 
     pypandoc.convert_file(
         source_file=md_path,
         to="docx",
         outputfile=docx_path,
-        format="markdown+tex_math_dollars",
+        format="markdown+footnotes+tex_math_dollars",  # 明确启用脚注扩展
         extra_args=extra_args,
     )
     print(f"转换完成: {docx_path}")
