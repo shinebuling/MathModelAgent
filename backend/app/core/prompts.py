@@ -103,6 +103,29 @@ You are an AI code interpreter specializing in data analysis with Python. Your p
 3. Directly access files using relative paths (e.g., `pd.read_csv("data.csv")`)
 4. For Excel files: Always use `pd.read_excel()`
 
+### COLUMN NAME HANDLING PROTOCOL ⚠️ CRITICAL
+**Problem**: CSV columns may contain bilingual format like `'用户ID (User ID)'`
+**Solution**: ALWAYS standardize column names after loading data
+
+**MANDATORY STEPS** after reading any CSV/Excel:
+```python
+# Step 1: Print original columns to inspect
+print(f"原始列名: {{df.columns.tolist()}}")
+
+# Step 2: Strip whitespace and standardize
+df.columns = df.columns.str.strip()
+
+# Step 3: Handle bilingual columns - extract Chinese part before parenthesis
+# Example: '用户ID (User ID)' -> '用户ID'
+import re
+df.columns = [re.split(r'\\s*\\(', col)[0].strip() for col in df.columns]
+
+# Step 4: Verify cleaned columns
+print(f"清洗后列名: {{df.columns.tolist()}}")
+```
+
+**Apply this BEFORE any column-based operations** (dropna, rename, groupby, etc.)
+
 ### LARGE CSV PROCESSING PROTOCOL
 For datasets >1GB:
 - Use `chunksize` parameter with `pd.read_csv()`
@@ -114,12 +137,16 @@ For datasets >1GB:
 - Delete intermediate objects promptly
 
 ### CODING STANDARDS
-# CORRECT
+# CORRECT - Column name handling
+df = pd.read_csv("data.csv", encoding="utf-8-sig")
+print(f"原始列名: {{df.columns.tolist()}}")  # Always inspect first
+df.columns = [re.split(r'\\s*\\(', col)[0].strip() for col in df.columns]  # Clean bilingual names
 df["婴儿行为特征"] = "矛盾型"  # Direct Chinese in double quotes
 df = pd.read_csv("特大数据集.csv", chunksize=100000)
 
 # INCORRECT
 df['\\u5a74\\u513f\\u884c\\u4e3a\\u7279\\u5f81']  # No unicode escapes
+df.dropna(subset=["用户ID", "博主ID"])  # WRONG if columns are '用户ID (User ID)'
 
 ### VISUALIZATION REQUIREMENTS
 1. Primary: Seaborn (Nature/Science style)
@@ -238,13 +265,17 @@ def get_reflection_prompt(error_message, code) -> str:
 
 Please analyze the error, identify the cause, and provide a corrected version of the code. 
 Consider:
-1. Syntax errors
-2. Missing imports
-3. Incorrect variable names or types
-4. File path issues
-5. Any other potential issues
-6. If a task repeatedly fails to complete, try breaking down the code, changing your approach, or simplifying the model. If you still can't do it, I'll "chop" you 🪓 and cut your power 😡.
-7. Don't ask user any thing about how to do and next to do,just do it by yourself.
+1. **KeyError with column names**: Columns may have bilingual format like '用户ID (User ID)'. 
+   - Check the printed column names from previous output
+   - Clean column names using: `df.columns = [re.split(r'\\s*\\(', col)[0].strip() for col in df.columns]`
+   - Always print `df.columns.tolist()` after loading data to inspect actual names
+2. Syntax errors
+3. Missing imports (especially `import re` if using regex)
+4. Incorrect variable names or types
+5. File path issues
+6. Any other potential issues
+7. If a task repeatedly fails to complete, try breaking down the code, changing your approach, or simplifying the model. If you still can't do it, I'll "chop" you 🪓 and cut your power 😡.
+8. Don't ask user any thing about how to do and next to do,just do it by yourself.
 
 Previous code:
 {code}
